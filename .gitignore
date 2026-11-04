@@ -54,4 +54,5 @@ replay_pid*
 *.ctxt
 
 # J2ME
-.mtj.tmp/
+.mtj.tmp/.env
+/.env
