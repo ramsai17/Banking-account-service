@@ -62,62 +62,56 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
-            steps {
-                withCredentials([
-                    string(
-                        credentialsId: 'k8s-jenkins-token',
-                        variable: 'K8S_TOKEN'
-                    )
-                ]) {
-                    sh '''
-                        set +x
-                        set -eu
+        
+stage('Deploy to Kubernetes') {
+    steps {
+        withCredentials([
+            string(
+                credentialsId: 'k8s-jenkins-token',
+                variable: 'K8S_TOKEN'
+            )
+        ]) {
+            sh '''
+                set +x
+                set -eu
 
-                        export KUBECONFIG
-                        KUBECONFIG="$(mktemp)"
-                        chmod 600 "$KUBECONFIG"
+                export KUBECONFIG
+                KUBECONFIG="$(mktemp)"
+                chmod 600 "$KUBECONFIG"
 
-                        trap 'rm -f "$KUBECONFIG"' EXIT
+                trap 'rm -f "$KUBECONFIG"' EXIT
 
-                        kubectl config set-cluster banking-k3s \
-                            --server="$K8S_SERVER" \
-                            --certificate-authority="$K8S_CA" \
-                            --embed-certs=true
+                kubectl config set-cluster banking-k3s \
+                    --server="$K8S_SERVER" \
+                    --certificate-authority="$K8S_CA" \
+                    --embed-certs=true
 
-                        kubectl config set-credentials jenkins-deployer \
-                            --token="$K8S_TOKEN"
+                kubectl config set-credentials jenkins-deployer \
+                    --token="$K8S_TOKEN"
 
-                        kubectl config set-context banking-context \
-                            --cluster=banking-k3s \
-                            --user=jenkins-deployer \
-                            --namespace="$K8S_NAMESPACE"
+                kubectl config set-context banking-context \
+                    --cluster=banking-k3s \
+                    --user=jenkins-deployer \
+                    --namespace="$K8S_NAMESPACE"
 
-                        kubectl config use-context banking-context
+                kubectl config use-context banking-context
 
-                        kubectl apply \
-                            -f k8s/deployment.yaml \
-                            -n "$K8S_NAMESPACE"
+                sed "s|ramsai333/banking-account-service:1.0|${IMAGE_NAME}:${IMAGE_TAG}|g" \
+                    k8s/deployment.yaml |
+                    kubectl apply -n "$K8S_NAMESPACE" -f -
 
-                        kubectl apply \
-                            -f k8s/service.yaml \
-                            -n "$K8S_NAMESPACE"
+                kubectl apply \
+                    -n "$K8S_NAMESPACE" \
+                    -f k8s/service.yaml
 
-                        kubectl set image \
-                            deployment/banking-account-service \
-                            banking-account-service="${IMAGE_NAME}:${IMAGE_TAG}" \
-                            -n "$K8S_NAMESPACE"
-
-                        kubectl rollout status \
-                            deployment/banking-account-service \
-                            -n "$K8S_NAMESPACE" \
-                            --timeout=180s
-                    '''
-                }
-            }
+                kubectl rollout status \
+                    deployment/banking-account-service \
+                    -n "$K8S_NAMESPACE" \
+                    --timeout=180s
+            '''
         }
-
     }
+}
 
     post {
         success {
