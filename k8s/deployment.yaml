@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: banking-account-service
+  namespace: banking
+  labels:
+    app: banking-account-service
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: banking-account-service
+
+  template:
+    metadata:
+      labels:
+        app: banking-account-service
+
+    spec:
+      containers:
+        - name: banking-account-service
+          image: ramsai333/banking-account-service:1.0
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8080
+
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "768Mi"
+              cpu: "500m"
